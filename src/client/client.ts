@@ -1,0 +1,567 @@
+import * as THREE from "three";
+
+import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
+import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
+// import { Geometry } from "three/examples/jsm/geometries/Geometry.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { ARButton } from "three/examples/jsm/webxr/ARButton.js";
+
+interface KeyValue {
+  [key: string]: number;
+}
+
+THREE.Cache.enabled = true;
+
+let container, hex: any;
+
+let camera: THREE.PerspectiveCamera,
+  cameraTarget: THREE.Vector3,
+  scene: THREE.Scene,
+  renderer: THREE.WebGLRenderer,
+  controls: OrbitControls;
+
+let group: THREE.Group,
+  textMesh1: THREE.Mesh,
+  textMesh2: THREE.Mesh,
+  textGeo: TextGeometry,
+  materials: Array<THREE.MeshPhongMaterial>;
+
+let mesh2: THREE.Mesh;
+
+// let firstLetter = true;
+
+let text = `
+  Кохаю тебе 
+моя Тубасічка!)
+`,
+  bevelEnabled = true,
+  font: any = undefined,
+  fontName = "adventure", // helvetiker, optimer, gentilis, droid sans, droid serif
+  fontWeight = "regular"; // normal bold
+
+const height = 1,
+  size = 50,
+  hover = 20,
+  curveSegments = 4,
+  bevelThickness = 2,
+  bevelSize = 1.5;
+
+const mirror = false;
+
+// const fontMap: KeyValue = {
+//   helvetiker: 0,
+//   optimer: 1,
+//   gentilis: 2,
+//   "droid/droid_sans": 3,
+//   "droid/droid_serif": 4,
+// };
+
+// const weightMap: KeyValue = {
+//   regular: 0,
+//   bold: 1,
+// };
+
+// const reverseFontMap: Array<string> = [];
+// const reverseWeightMap: Array<string> = [];
+
+// for (const i in fontMap) reverseFontMap[fontMap[i]] = i;
+// for (const i in weightMap) reverseWeightMap[weightMap[i]] = i;
+
+// let targetRotation = 0;
+// let targetRotationOnPointerDown = 0;
+
+// let pointerX = 0;
+// let pointerXOnPointerDown = 0;
+
+let windowHalfX = window.innerWidth / 2;
+
+// let fontIndex = 1;
+
+// HEART FUNCTIONS START
+
+function useCoordinates () {
+    // const vertices = [
+    //   new THREE.Vector3(0, 0, 0), // point C
+    //   new THREE.Vector3(0, 5, -1.5),
+    //   new THREE.Vector3(5, 5, 0), // point A
+    //   new THREE.Vector3(9, 9, 0),
+    //   new THREE.Vector3(5, 9, 2),
+    //   new THREE.Vector3(7, 13, 0),
+    //   new THREE.Vector3(3, 13, 0),
+    //   new THREE.Vector3(0, 11, 0),
+    //   new THREE.Vector3(5, 9, -2),
+    //   new THREE.Vector3(0, 8, -3),
+    //   new THREE.Vector3(0, 8, 3),
+    //   new THREE.Vector3(0, 5, 1.5), // point B
+    //   new THREE.Vector3(-9, 9, 0),
+    //   new THREE.Vector3(-5, 5, 0),
+    //   new THREE.Vector3(-5, 9, -2),
+    //   new THREE.Vector3(-5, 9, 2),
+    //   new THREE.Vector3(-7, 13, 0),
+    //   new THREE.Vector3(-3, 13, 0),
+    // ];
+    const vertices = new Float32Array([
+        0, 0, 0, // point C
+        0, 5, -1.5,
+        5, 5, 0, // point A
+        9, 9, 0,
+        5, 9, 2,
+        7, 13, 0,
+        3, 13, 0,
+        0, 11, 0,
+        5, 9, -2,
+        0, 8, -3,
+        0, 8, 3,
+        0, 5, 1.5, // point B
+        -9, 9, 0,
+        -5, 5, 0,
+        -5, 9, -2,
+        -5, 9, 2,
+        -7, 13, 0,
+        -3, 13, 0,
+      ]);
+    const trianglesIndexes = [
+    // face 1
+      2,11,0, // This represents the 3 points A,B,C which compose the first triangle
+      2,3,4,
+      5,4,3,
+      4,5,6,
+      4,6,7,
+      4,7,10,
+      4,10,11,
+      4,11,2,
+      0,11,13,
+      12,13,15,
+      12,15,16,
+      16,15,17,
+      17,15,7,
+      7,15,10,
+      11,10,15,
+      13,11,15,
+    // face 2
+      0,1,2,
+      1,9,2,
+      9,8,2,
+      5,3,8,
+      8,3,2,
+      6,5,8,
+      7,6,8,
+      9,7,8,
+      14,17,7,
+      14,7,9,
+      14,9,1,
+      9,1,13,
+      1,0,13,
+      14,1,13,
+      16,14,12,
+      16,17,14,
+      12,14,13
+    ]
+    return {
+      vertices,
+      trianglesIndexes
+    }
+  }
+  
+  function createHeartMesh (coordinatesList: Float32Array, trianglesIndexes: Array<number>) {
+      const geo = new THREE.BufferGeometry();
+    //   let vertices: Float32Array = coordinatesList;
+    //   let faces = [];
+    //   for (let i of trianglesIndexes) {
+    //       if ((i + 1) % 3 === 0) {
+    //         //   vertices.push(coordinatesList[trianglesIndexes[i-2]], coordinatesList[trianglesIndexes[i-1]], coordinatesList[trianglesIndexes[i]])
+    //           faces.push(i-2, i-1, i);
+    //       }
+    //   }
+      geo.setAttribute('position', new THREE.BufferAttribute( coordinatesList, 3 ));
+      geo.setIndex(trianglesIndexes);
+      geo.computeVertexNormals()
+      const material = new THREE.MeshPhongMaterial( { color: 0xad0c00 } )
+      const heartMesh = new THREE.Mesh(geo, material)
+      return {
+          geo,
+          material,
+          heartMesh
+      }
+  }
+  
+  function addWireFrameToMesh (mesh: THREE.Mesh, geometry: THREE.BufferGeometry) {
+      const wireframe = new THREE.WireframeGeometry( geometry )
+      const lineMat = new THREE.LineBasicMaterial( { color: 0x000000, linewidth: 2 } )
+      const line = new THREE.LineSegments( wireframe, lineMat )
+      mesh.add(line)
+  }
+  
+  const beatingIncrement = 0.008
+  let scaleThreshold = false
+  function beatingAnimation (mesh: THREE.Mesh) {
+       // while the scale value is below the max,
+       // and the threshold is not reached, we increase it
+       if (mesh.scale.x < 1.4 && !scaleThreshold) {
+        mesh.scale.x += beatingIncrement * 2
+        mesh.scale.y += beatingIncrement * 2
+        mesh.scale.z += beatingIncrement * 2
+        // When max value is reached, the flag can be switched
+        if (mesh.scale.x >= 1.4) scaleThreshold = true
+       } else if (scaleThreshold) {
+        mesh.scale.x -= beatingIncrement
+        mesh.scale.y -= beatingIncrement
+        mesh.scale.z -= beatingIncrement
+        // The mesh got back to its initial state
+        // we can switch back the flag and go through the increasing path next time
+        if (mesh.scale.x <= 1) {
+         scaleThreshold = startAnim = false
+        }
+       }
+  }
+  
+  let startAnim = false
+  
+  function handleMouseIntersection (camera: THREE.PerspectiveCamera, scene: THREE.Scene, meshUuid: string) {
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+  
+    function onMouseIntersection( event: MouseEvent ) {
+        const coordinatesObject = (event as any).changedTouches ? (event as any).changedTouches[0] : event
+        mouse.x = ( coordinatesObject.clientX / window.innerWidth ) * 2 - 1; // (coordinatesObject as any) can be an issue
+        mouse.y = - ( coordinatesObject.clientY / window.innerHeight ) * 2 + 1;
+  
+        raycaster.setFromCamera( mouse, camera );
+        const intersects = raycaster.intersectObjects( scene.children );
+  
+        if (intersects.length && intersects[0].object.uuid === meshUuid) {
+            startAnim = true
+        }
+    }
+  
+    mouse.x = 1
+    mouse.y = 1
+  
+    return {
+        onMouseIntersection
+    }
+  }
+  
+  function setControls (camera: THREE.PerspectiveCamera, domElement: HTMLElement, deviceOrientationMode = false) {
+    // const controls = deviceOrientationMode ? new DeviceOrientationControls(camera) : new OrbitControls( camera, domElement )
+    const controls = new OrbitControls( camera, domElement );
+      controls.update();
+    return controls;
+  }
+
+  
+// HEART FUNCTIONS END
+
+// function decimalToHex(d: string) {
+//   let hex = Number(d).toString(16);
+//   hex = "000000".substring(0, 6 - hex.length) + hex;
+//   return hex.toUpperCase();
+// }
+
+function init() {
+  container = document.createElement("div");
+  document.body.appendChild(container);
+
+  // CAMERA
+
+  camera = new THREE.PerspectiveCamera(
+    30,
+    window.innerWidth / window.innerHeight,
+    1,
+    1500
+  );
+  camera.position.set(0, 400, 700);
+
+  cameraTarget = new THREE.Vector3(0, 25, 0);
+
+  // SCENE
+
+  scene = new THREE.Scene();
+  //   scene.background = new THREE.Color(0x000000);
+  //   scene.fog = new THREE.Fog(0x000000, 250, 1400);
+
+  // LIGHTS
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
+  dirLight.position.set(0, 0, 1).normalize();
+  scene.add(dirLight);
+
+  const pointLight = new THREE.PointLight(0xffffff, 1.5);
+  pointLight.position.set(0, 20, 18);
+  scene.add(pointLight);
+
+  // Get text from hash
+
+  //   const hash = document.location.hash.substring(1);
+
+  //   if (hash.length !== 0) {
+  //     const colorhash = hash.substring(0, 6);
+  //     const fonthash = hash.substring(6, 7);
+  //     const weighthash = hash.substring(7, 8);
+  //     const bevelhash = hash.substring(8, 9);
+  //     const texthash = hash.substring(10);
+
+  //     hex = colorhash;
+  //     pointLight.color.setHex(parseInt(colorhash, 16));
+
+  //     // fontName = reverseFontMap[parseInt(fonthash)];
+  //     // fontWeight = reverseWeightMap[parseInt(weighthash)];
+
+  //     bevelEnabled = !!parseInt(bevelhash);
+
+  //     text = decodeURI(texthash);
+  //   } else {
+  //     pointLight.color.setHSL(Math.random(), 1, 0.5);
+  //     hex = decimalToHex(pointLight.color.getHex() as any);
+  //   }
+
+  // pointLight.color.setHSL(0, 1, 0.27);
+  pointLight.color.setHSL(327, 0.45, 0.49);
+  hex = 0x8b0000;
+
+  materials = [
+    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
+    new THREE.MeshPhongMaterial({ color: 0xffffff }), // side
+  ];
+
+  group = new THREE.Group();
+  group.position.y = 20;
+  group.position.z = -20;
+
+  scene.add(group);
+
+  loadFont();
+
+  //   const plane = new THREE.Mesh(
+  //     new THREE.PlaneGeometry(10000, 10000),
+  //     new THREE.MeshBasicMaterial({
+  //       color: 0xffffff,
+  //       opacity: 0.5,
+  //       transparent: true,
+  //     })
+  //   );
+  //   plane.position.y = 100;
+  //   plane.rotation.x = -Math.PI / 2;
+  //   scene.add(plane);
+
+  // HEART
+
+//   const x = 2.5;
+//   const y = 5;
+//   const heartShape = new THREE.Shape();
+
+//   heartShape.moveTo(x + 2.5, y + 2.5);
+//   heartShape.bezierCurveTo(x + 2.5, y + 2.5, x + 2, y, x, y);
+//   heartShape.bezierCurveTo(x - 3, y, x - 3, y + 3.5, x - 3, y + 3.5);
+//   heartShape.bezierCurveTo(x - 3, y + 5.5, x - 1.5, y + 7.7, x + 2.5, y + 9.5);
+//   heartShape.bezierCurveTo(x + 6, y + 7.7, x + 8, y + 4.5, x + 8, y + 3.5);
+//   heartShape.bezierCurveTo(x + 8, y + 3.5, x + 8, y, x + 5, y);
+//   heartShape.bezierCurveTo(x + 3.5, y, x + 2.5, y + 2.5, x + 2.5, y + 2.5);
+
+//   const geometry3 = new THREE.ShapeBufferGeometry(heartShape);
+//   const material3 = new THREE.MeshBasicMaterial({
+//     color: new THREE.Color("rgb(255, 87, 51)"),
+//   });
+//   mesh2 = new THREE.Mesh(geometry3, material3);
+//   mesh2.position.z = -10;
+//   scene.add(mesh2);
+
+  // RENDERER
+
+  //   renderer = new THREE.WebGLRenderer({ antialias: true });
+  //   renderer.setPixelRatio(window.devicePixelRatio);
+  //   renderer.setSize(window.innerWidth, window.innerHeight);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+
+  container.appendChild(renderer.domElement);
+
+  // EVENTS
+
+  container.style.touchAction = "none";
+  //   container.addEventListener("pointerdown", onPointerDown);
+  //   document.addEventListener("keypress", onDocumentKeyPress);
+  //   document.addEventListener("keydown", onDocumentKeyDown);
+
+  // Heart Controls
+//   const { controls } = setControls(camera, renderer.domElement, window.location.hash.includes('deviceOrientation'))
+  controls = setControls(camera, renderer.domElement);
+  const { vertices, trianglesIndexes} = useCoordinates();
+  const { geo, material, heartMesh } = createHeartMesh(vertices, trianglesIndexes);
+  mesh2 = heartMesh;
+  group.add(mesh2);
+  addWireFrameToMesh(mesh2, geo);
+  const { onMouseIntersection } = handleMouseIntersection(camera, scene, mesh2.uuid);
+
+  window.addEventListener( 'click', onMouseIntersection, false );
+
+  // Add AR button
+  document.body.appendChild(ARButton.createButton(renderer));
+
+  window.addEventListener("resize", onWindowResize);
+}
+
+function onWindowResize() {
+  windowHalfX = window.innerWidth / 2;
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+//
+
+// function onDocumentKeyDown(event: KeyboardEvent) {
+//   if (firstLetter) {
+//     firstLetter = false;
+//     text = "";
+//   }
+
+//   const keyCode = event.key || event.keyCode;
+
+//   // backspace
+
+//   if (keyCode == 8) {
+//     event.preventDefault();
+
+//     text = text.substring(0, text.length - 1);
+//     refreshText();
+
+//     return false;
+//   }
+// }
+
+// function onDocumentKeyPress(event: KeyboardEvent) {
+//   const keyCode = event.key || event.which;
+
+//   // backspace
+
+//   if (keyCode == 8) {
+//     event.preventDefault();
+//   } else {
+//     const ch = String.fromCharCode(Number(keyCode));
+//     text += ch;
+
+//     refreshText();
+//   }
+// }
+
+function loadFont() {
+  const loader = new FontLoader();
+  loader.load(
+    "fonts/" + fontName + "_" + fontWeight + ".typeface.json",
+    function (response) {
+      font = response;
+
+      refreshText();
+    }
+  );
+}
+
+function createText() {
+  textGeo = new TextGeometry(text, {
+    font: font,
+
+    size: size,
+    height: height,
+    curveSegments: curveSegments,
+
+    bevelThickness: bevelThickness,
+    bevelSize: bevelSize,
+    bevelEnabled: bevelEnabled,
+  });
+
+  textGeo.computeBoundingBox();
+
+  let boundingBox = textGeo.boundingBox
+    ? textGeo.boundingBox.max.x - textGeo.boundingBox.min.x
+    : 1;
+
+  const centerOffset = -0.5 * boundingBox;
+
+  textMesh1 = new THREE.Mesh(textGeo, materials);
+
+  textMesh1.position.x = centerOffset;
+  textMesh1.position.y = hover;
+  textMesh1.position.z = 0;
+
+  textMesh1.rotation.x = 0;
+  textMesh1.rotation.y = Math.PI * 2;
+
+  group.add(textMesh1);
+
+  if (mirror) {
+    textMesh2 = new THREE.Mesh(textGeo, materials);
+
+    textMesh2.position.x = centerOffset;
+    textMesh2.position.y = -hover;
+    textMesh2.position.z = height;
+
+    textMesh2.rotation.x = Math.PI;
+    textMesh2.rotation.y = Math.PI * 2;
+
+    group.add(textMesh2);
+  }
+}
+
+function refreshText() {
+  group.remove(textMesh1);
+  if (mirror) group.remove(textMesh2);
+
+  if (!text) return;
+
+  createText();
+}
+
+// function onPointerDown(event: PointerEvent) {
+//   if (event.isPrimary === false) return;
+
+//   pointerXOnPointerDown = event.clientX - windowHalfX;
+//   targetRotationOnPointerDown = targetRotation;
+
+//   document.addEventListener("pointermove", onPointerMove);
+//   document.addEventListener("pointerup", onPointerUp);
+// }
+
+// function onPointerMove(event: PointerEvent) {
+//   if (event.isPrimary === false) return;
+
+//   pointerX = event.clientX - windowHalfX;
+
+//   targetRotation =
+//     targetRotationOnPointerDown + (pointerX - pointerXOnPointerDown) * 0.02;
+// }
+
+// function onPointerUp(event: PointerEvent) {
+//   if (event.isPrimary === false) return;
+
+//   document.removeEventListener("pointermove", onPointerMove);
+//   document.removeEventListener("pointerup", onPointerUp);
+// }
+
+//
+
+function animate() {
+  requestAnimationFrame(animate);
+  render();
+}
+
+function render() {
+  //   group.rotation.y += (targetRotation - group.rotation.y) * 0.05;
+  mesh2.rotation.y -= 0.005;
+  startAnim && beatingAnimation(mesh2);
+  controls.update();
+  camera.lookAt(cameraTarget);
+
+  renderer.clear();
+  renderer.render(scene, camera);
+}
+
+
+init();
+animate();
+
