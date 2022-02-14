@@ -2,14 +2,38 @@ import * as THREE from "three";
 import { XRHitTestSource, XRReferenceSpace, XRSession } from "three";
 import { ARButton } from "three/examples/jsm/webxr/ARButton.js";
 import { Group } from "three/src/objects/Group";
+import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
+import { TextGeometry, TextGeometryParameters } from "three/examples/jsm/geometries/TextGeometry.js";
 
 let container: HTMLDivElement;
 let camera: THREE.PerspectiveCamera,
+    cameraTarget: THREE.Vector3,
   scene: THREE.Scene,
   renderer: THREE.WebGLRenderer;
 let reticle: THREE.Mesh;
 let controller: Group;
 let meshItems: Array<THREE.Mesh> = [];
+
+let group: THREE.Group,
+  textMesh1: THREE.Mesh,
+  textMesh2: THREE.Mesh,
+  textGeo: TextGeometry,
+  materials: Array<THREE.MeshPhongMaterial>;
+let text = `
+  Кохаю тебе 
+моя Тубасічка!)
+`,
+  bevelEnabled = true,
+  font: any = undefined,
+  fontName = "adventure", // helvetiker, optimer, gentilis, droid sans, droid serif
+  fontWeight = "regular"; // normal bold
+const height = 1,
+  size = 5,
+  hover = 2,
+  curveSegments = 0.4,
+  bevelThickness = 0.2,
+  bevelSize = 0.15;
+const mirror = false;
 
 init();
 animate();
@@ -21,11 +45,15 @@ function init() {
   scene = new THREE.Scene();
 
   camera = new THREE.PerspectiveCamera(
-    70,
+    30,
     window.innerWidth / window.innerHeight,
-    0.01,
-    20
+    1,
+    1500
   );
+  camera.position.set(0, 0, 5);
+
+  cameraTarget = new THREE.Vector3(0, 25, 0);
+  camera.lookAt( cameraTarget );
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -33,21 +61,44 @@ function init() {
   renderer.xr.enabled = true;
   container.appendChild(renderer.domElement);
 
-  var light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-  light.position.set(0.5, 1, 0.25);
-  scene.add(light);
+//   var light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+//   light.position.set(0.5, 1, 0.25);
+//   scene.add(light);
 
   controller = renderer.xr.getController(0);
   controller.addEventListener("select", onSelect);
   scene.add(controller);
 
   addReticleToScene();
+  loadFont();
+  // ADD TEXT START
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.125);
+  dirLight.position.set(0, 0, 1).normalize();
+  scene.add(dirLight);
+
+  const pointLight = new THREE.PointLight(0xffffff, 1.5);
+  pointLight.position.set(0.5, 1, 0.25);
+  pointLight.color.setHSL(327, 0.45, 0.49);
+  scene.add(pointLight);
+
+  materials = [
+    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
+    new THREE.MeshPhongMaterial({ color: 0xffffff }), // side
+  ];
+  
+  // ADD TEXT END
+  group = new THREE.Group();
+  group.position.y = 5;
+  group.position.z = -5;
+
+  scene.add(group);
 
   const button = ARButton.createButton(renderer, {
     requiredFeatures: ["hit-test"], // notice a new required feature
   });
   document.body.appendChild(button);
-  renderer.domElement.style.display = "none";
+//   renderer.domElement.style.display = "none";
 
   window.addEventListener("resize", onWindowResize, false);
 }
@@ -65,7 +116,6 @@ function addReticleToScene() {
   reticle.matrixAutoUpdate = false;
   reticle.visible = false; // we start with the reticle not visible
   scene.add(reticle);
-
   // optional axis helper you can add to an object
   // reticle.add(new THREE.AxesHelper(1));
 }
@@ -90,9 +140,12 @@ function onSelect() {
     // set the position of the cylinder based on where the reticle is
     heartMesh.position.setFromMatrixPosition(reticle.matrix);
     heartMesh.quaternion.setFromRotationMatrix(reticle.matrix);
-    heartMesh.scale.set(0.1, 0.1, 0.1);
+    heartMesh.scale.set(0.05, 0.05, 0.05);
     meshItems.push(heartMesh);
     scene.add(heartMesh);
+
+    // group = new THREE.Group();
+    // group.position.setFromMatrixPosition(reticle.matrix);
   }
 }
 
@@ -400,3 +453,72 @@ function addWireFrameToMesh(mesh: THREE.Mesh, geometry: THREE.BufferGeometry) {
 // }
 
 // let startAnim = false
+
+// TEXT INIT
+
+function loadFont() {
+  const loader = new FontLoader();
+  loader.load(
+    "fonts/" + fontName + "_" + fontWeight + ".typeface.json",
+    function (response) {
+      font = response;
+
+      refreshText();
+    }
+  );
+}
+
+function createText() {
+  textGeo = new TextGeometry(text, {
+    font: font,
+
+    size: size,
+    height: height,
+    curveSegments: curveSegments,
+
+    bevelThickness: bevelThickness,
+    bevelSize: bevelSize,
+    bevelEnabled: bevelEnabled,
+  });
+
+  textGeo.computeBoundingBox();
+
+  let boundingBox = textGeo.boundingBox
+    ? textGeo.boundingBox.max.x - textGeo.boundingBox.min.x
+    : 1;
+  
+  const centerOffset = -0.5 * boundingBox;
+
+  textMesh1 = new THREE.Mesh(textGeo, materials);
+
+  textMesh1.position.x = centerOffset;
+  textMesh1.position.y = hover;
+  textMesh1.position.z = -77;
+
+  textMesh1.rotation.x = 0;
+  textMesh1.rotation.y = Math.PI * 2;
+
+  group.add(textMesh1);
+
+//   if (mirror) {
+//     textMesh2 = new THREE.Mesh(textGeo, materials);
+
+//     textMesh2.position.x = centerOffset;
+//     textMesh2.position.y = -hover;
+//     textMesh2.position.z = height;
+
+//     textMesh2.rotation.x = Math.PI;
+//     textMesh2.rotation.y = Math.PI * 2;
+
+//     group.add(textMesh2);
+//   }
+}
+
+function refreshText() {
+//   group.remove(textMesh1);
+//   if (mirror) group.remove(textMesh2);
+
+  if (!text) return;
+
+  createText();
+}

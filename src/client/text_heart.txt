@@ -317,7 +317,7 @@ function init() {
 
   // pointLight.color.setHSL(0, 1, 0.27);
   pointLight.color.setHSL(327, 0.45, 0.49);
-  hex = 0x8b0000;
+  // hex = 0x8b0000;
 
   materials = [
     new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true }), // front
